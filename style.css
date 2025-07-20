@@ -1,0 +1,57 @@
+ * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+#webgl {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: block;
+  z-index: 0;
+}
+
+/* Overlay content */
+.overlay {
+  position: relative;
+  z-index: 1;
+  color: white;
+  text-align: center;
+  padding-top: 20vh;
+}
+
+.overlay h1 {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px #000;
+}
+
+.overlay p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  text-shadow: 0 0 5px #000;
+}
+
+.overlay button {
+  padding: 10px 25px;
+  font-size: 1rem;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 0 10px #007bff;
+  transition: all 0.3s;
+}
+
+.overlay button:hover {
+  background: #0056b3;
+}
