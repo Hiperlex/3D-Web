@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Driver: Ultimate Edition</title>
+    <style>
+        body { margin: 0; background: #111; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; margin: 0 auto; background: #1a1a1a; border-left: 4px solid #333; border-right: 4px solid #333; }
+        
+        .hud { 
+            position: absolute; top: 20px; left: 30px; color: #0ff; 
+            text-shadow: 0 0 10px #0ff; pointer-events: none; 
+        }
+        
+        #gameOver { 
+            display: none; position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); color: white; text-align: center; 
+            background: rgba(0,0,0,0.9); padding: 40px; border: 3px solid #f05;
+            box-shadow: 0 0 20px #f05; border-radius: 15px;
+        }
+
+        .power-up-text { color: #0f0; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="hud">
+        <h1 style="margin:0; font-style: italic;">NEON DRIVER</h1>
+        <p>SCORE: <span id="scoreVal">0</span></p>
+        <p>SPEED: <span id="speedVal">0</span> km/h</p>
+        <p id="powerStatus" class="power-up-text"></p>
+    </div>
+
+    <div id="gameOver">
+        <h1 style="font-size: 3em; margin: 0; color: #f05;">CRASHED!</h1>
+        <p style="font-size: 1.2em;">Final Score: <span id="finalScore">0</span></p>
+        <p>Press <strong style="color: #0ff;">'R'</strong> to Restart</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreVal = document.getElementById('scoreVal');
+    const speedVal = document.getElementById('speedVal');
+    const finalScore = document.getElementById('finalScore');
+    const gameOverDiv = document.getElementById('gameOver');
+    const powerStatus = document.getElementById('powerStatus');
+
+    canvas.width = 450;
+    canvas.height = window.innerHeight;
+
+    // Game Variables
+    let score = 0;
+    let gameActive = true;
+    let powerTimer = 0;
+    const keys = {};
+    const colors = ['#ff0055', '#ffcc00', '#ae00ff', '#ff5500', '#ffffff'];
+
+    // Entities
+    let car = {
+        x: 200, y: canvas.height - 120,
+        w: 42, h: 75,
+        speed: 0, accel: 0.25, friction: 0.08,
+        color: '#00ffff'
+    };
+
+    let obstacles = [];
+    let powerUps = [];
+
+    // Keyboard Listeners
+    window.addEventListener('keydown', e => {
+        keys[e.code] = true;
+        if(e.code === 'KeyR' && !gameActive) resetGame();
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    function spawnEntities() {
+        // Spawn Obstacles
+        if (Math.random() < 0.02) {
+            obstacles.push({
+                x: Math.random() * (canvas.width - 40),
+                y: -100, w: 42, h: 75,
+                speed: 3 + Math.random() * 4,
+                color: colors[Math.floor(Math.random() * colors.length)]
+            });
+        }
+        // Spawn Power-ups (rare)
+        if (Math.random() < 0.003) {
+            powerUps.push({
+                x: Math.random() * (canvas.width - 30),
+                y: -100, w: 25, h: 25,
+                speed: 4
+            });
+        }
+    }
+
+    function checkCollision(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x &&
+               a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function resetGame() {
+        score = 0; obstacles = []; powerUps = [];
+        car.x = 200; car.speed = 0;
+        gameActive = true;
+        powerTimer = 0;
+        powerStatus.innerText = "";
+        gameOverDiv.style.display = 'none';
+        animate();
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        // Drive Physics
+        if (keys['ArrowUp']) car.speed += car.accel;
+        if (keys['ArrowDown']) car.speed -= car.accel;
+        car.speed *= (1 - car.friction);
+        
+        // Steering
+        if (keys['ArrowLeft']) car.x -= 7;
+        if (keys['ArrowRight']) car.x += 7;
+
+        car.x = Math.max(0, Math.min(canvas.width - car.w, car.x));
+        car.speed = Math.max(0, Math.min(15, car.speed));
+
+        // Manage Power-up State
+        if (powerTimer > 0) {
+            powerTimer--;
+            car.color = "#0f0"; // Turn green when powered up
+            powerStatus.innerText = "SPEED BOOST ACTIVE!";
+        } else {
+            car.color = "#0ff";
+            powerStatus.innerText = "";
+        }
+
+        spawnEntities();
+
+        // Update Obstacles
+        obstacles.forEach((obs, i) => {
+            obs.y += obs.speed + (car.speed * 0.4);
+            if (checkCollision(car, obs)) {
+                gameActive = false;
+                finalScore.innerText = score;
+                gameOverDiv.style.display = 'block';
+            }
+            if (obs.y > canvas.height) {
+                obstacles.splice(i, 1);
+                score += 10;
+            }
+        });
+
+        // Update Power-ups
+        powerUps.forEach((p, i) => {
+            p.y += p.speed + (car.speed * 0.4);
+            if (checkCollision(car, p)) {
+                powerUps.splice(i, 1);
+                powerTimer = 200; // ~3 seconds of boost
+                score += 50;
+            }
+        });
+
+        scoreVal.innerText = score;
+        speedVal.innerText = Math.round(car.speed * 15);
+    }
+
+    function draw() {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Road Center Line
+        ctx.strokeStyle = '#333';
+        ctx.setLineDash([40, 40]);
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height);
+        ctx.stroke();
+
+        // Draw Player Car
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = car.color;
+        ctx.fillStyle = car.color;
+        ctx.fillRect(car.x, car.y, car.w, car.h);
+        
+        // Draw Obstacles
+        obstacles.forEach(obs => {
+            ctx.shadowColor = obs.color;
+            ctx.fillStyle = obs.color;
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        });
+
+        // Draw Power-ups (Glowing Green Orbs)
+        powerUps.forEach(p => {
+            ctx.shadowColor = "#0f0";
+            ctx.fillStyle = "#0f0";
+            ctx.beginPath();
+            ctx.arc(p.x + p.w/2, p.y + p.h/2, 12, 0, Math.PI*2);
+            ctx.fill();
+        });
+
+        ctx.shadowBlur = 0; 
+    }
+
+    function animate() {
+        if (!gameActive) return;
+        update();
+        draw();
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+</body>
+<html>
